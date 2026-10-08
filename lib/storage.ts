@@ -1,0 +1,4 @@
+import type { Project } from './studio';
+function db():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const request=indexedDB.open('line-studio',1);request.onupgradeneeded=()=>request.result.createObjectStore('drafts');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+export async function loadDraft():Promise<unknown>{const d=await db();try{return await new Promise((resolve,reject)=>{const tx=d.transaction('drafts','readonly');const r=tx.objectStore('drafts').get('current');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}finally{d.close();}}
+export async function saveDraft(p:Project):Promise<void>{const d=await db();try{await new Promise<void>((resolve,reject)=>{const tx=d.transaction('drafts','readwrite');tx.objectStore('drafts').put(p,'current');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{d.close();}}
