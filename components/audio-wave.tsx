@@ -1,0 +1,8 @@
+'use client';
+import {useEffect,useRef,type MutableRefObject} from 'react';
+export type Transport={toggle:()=>void;seek:(ms:number)=>void;rate:(n:number)=>void;pause:()=>void};
+export default function AudioWave({url,transport,onTime,onReady,onPlaying,onError}:{url:string;transport:MutableRefObject<Transport|null>;onTime:(ms:number)=>void;onReady:(ms:number)=>void;onPlaying:(b:boolean)=>void;onError:(message:string)=>void}){
+ const el=useRef<HTMLDivElement>(null);const callbacks=useRef({onTime,onReady,onPlaying,onError});useEffect(()=>{callbacks.current={onTime,onReady,onPlaying,onError};},[onTime,onReady,onPlaying,onError]);
+ useEffect(()=>{let disposed=false;let destroy:(()=>void)|undefined;void import('wavesurfer.js').then(({default:WaveSurfer})=>{if(disposed||!el.current)return;const wave=WaveSurfer.create({container:el.current,url,waveColor:'#405d52',progressColor:'#8ae9c4',cursorColor:'#edf1ec',height:54,barWidth:2,barGap:2,barRadius:2,normalize:true});destroy=()=>wave.destroy();transport.current={toggle:()=>{void wave.playPause().catch(e=>callbacks.current.onError(String(e)));},seek:ms=>wave.setTime(ms/1000),rate:n=>wave.setPlaybackRate(n),pause:()=>wave.pause()};wave.on('ready',()=>callbacks.current.onReady(wave.getDuration()*1000));wave.on('timeupdate',t=>callbacks.current.onTime(t*1000));wave.on('play',()=>callbacks.current.onPlaying(true));wave.on('pause',()=>callbacks.current.onPlaying(false));wave.on('finish',()=>callbacks.current.onPlaying(false));wave.on('error',e=>callbacks.current.onError(e.message));}).catch(e=>{if(!disposed)callbacks.current.onError(String(e));});return()=>{disposed=true;destroy?.();transport.current=null;};},[url,transport]);
+ return <div className="audio-wave" ref={el} aria-label="音频波形，可点击定位播放时间"/>;
+}
